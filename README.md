@@ -5,15 +5,31 @@ epygma is a simple python2.x script which allows you to encrypt text and files w
 
 Usage
 ======
-epygma new [-n NAME] [-b BYTES]             create a new key, default lenght is 10000000bytes
+make the script executable
 
-epygma xor [-i INPUT] [-k KEY] [-o OUTPUT]  encrypt/decrypt a file
+    chmod 777 epygma
+    
+then you can move it in a directory which is in your path (like /usr/bin) or launch it with ./epygma
 
-epygma encrypt_text [-k KEY]                encrypt text from stdin and encode it in Base64
+    epygma new [-n NAME] [-b BYTES]             
+    
+create a new key, default lenght is 10000000bytes
 
-epygma unencrypt_text [-k KEY]              decode a Base64 text from stdin and unencrypt it
+    epygma xor [-i INPUT] [-k KEY] [-o OUTPUT]  
+    
+    encrypt/decrypt a file
 
-epygma import [-k KEY] [-n NAME]            import a key
+    epygma encrypt_text [-k KEY]                
+    
+encrypt text from stdin and encode it in Base64
+
+    epygma unencrypt_text [-k KEY]              
+    
+decode a Base64 text from stdin and unencrypt it
+
+    epygma import [-k KEY] [-n NAME]            
+    
+import a key
 
 Compatibility
 ======
