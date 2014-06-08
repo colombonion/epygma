@@ -1,0 +1,213 @@
+#!/usr/bin/env python
+
+#  Copyright 2014 colombo <colombo@bitmessage.ch>
+#  
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#  
+# 
+from sys import argv
+from os import path
+import argparse
+ 
+def genkey(name, length=10000000):
+	from os import urandom, makedirs
+	try: makedirs(path.expanduser("~") + "/.epygma/" + name)
+	except:
+		print "there is already a key saved with this name!"
+		exit()
+	f = file(path.expanduser("~") + "/.epygma/" + name +"/key", "wb")
+	f.write(urandom(length))
+	f.close()
+	#creating key's index
+	f = file(path.expanduser("~") + "/.epygma/" + name +"/index", "w")
+	print >> f, "1"
+	print >> f, str(length),
+	f.close()
+	print "done"
+	
+def Import(key, name):
+	from os import makedirs
+	try: makedirs(path.expanduser("~") + "/.epygma/" + name)
+	except:
+		print "there is already a key saved with this name!"
+	from shutil import copyfile
+	copyfile(key, path.expanduser("~") + "/.epygma/%s/key" %(name) )
+	#generating index
+	f = open(path.expanduser("~") + "/.epygma/%s/key" %(name), "rb")
+	limit = len(f.read())
+	f.close()
+	f = open(path.expanduser("~") + "/.epygma/%s/index" %(name), "w")
+	print >> f, "1"
+	print >> f, limit,
+	f.close()
+	print "done"
+ 
+def xor_strings(fil, key, result="output"):
+	ffil = file(fil, "rb")
+	try: fkey = file(path.expanduser("~") + "/.epygma/" + key +"/key", "rb")
+	except: print "no such key name"
+	findex = file(path.expanduser("~") + "/.epygma/" + key +"/index", "r")
+	fresult = file(result, "wb")
+	ind = int(findex.readline())
+	limit = int(findex.readline())
+	findex.close()
+	for i in range(ind):
+		fkey.read(1)
+	while True:
+		try:
+			if ind >= limit:
+				print "this key has expired, you should generate a new one"
+				return
+			fresult.write(chr(ord(ffil.read(1))^ord(fkey.read(1))))
+			ind = ind+1
+		except:
+			ffil.close()
+			fkey.close()
+			fresult.close()
+			findex = file(path.expanduser("~") + "/.epygma/" + key +"/index", "w")
+			print >> findex, str(ind)
+			print >> findex, str(limit)
+			findex.close()
+			return
+			
+def encrypt_input_text(key):
+	from sys import stdin
+	input_text = stdin.read()
+	try: fkey = file(path.expanduser("~") + "/.epygma/" + key +"/key", "rb")
+	except:
+		print "no such key name"
+		exit()
+	findex = file(path.expanduser("~") + "/.epygma/" + key +"/index", "r")
+	ind = int(findex.readline())
+	limit = int(findex.readline())
+	findex.close()
+	for i in range(ind):
+		fkey.read(1)
+	output_text = ""
+	for i in range(len(input_text)):
+		if ind >= limit:
+			print "this key has expired, you should generate a new one"
+			return
+		output_text = output_text + chr(ord(input_text[i])^ord(fkey.read(1)))
+		ind = ind+1
+	output_text = output_text.encode('base64')
+	fkey.close()
+	findex = file(path.expanduser("~") + "/.epygma/" + key +"/index", "w")
+	print >> findex, str(ind)
+	print >> findex, str(limit)
+	findex.close()
+	print
+	print
+	print output_text
+	return output_text
+	
+def unencrypt_input_text(key):
+	from sys import stdin
+	input_text = stdin.read().decode('base64')
+	try: fkey = file(path.expanduser("~") + "/.epygma/" + key +"/key", "rb")
+	except: print "no such key name"
+	findex = file(path.expanduser("~") + "/.epygma/" + key +"/index", "r")
+	ind = int(findex.readline())
+	limit = int(findex.readline())
+	findex.close()
+	for i in range(ind):
+		fkey.read(1)
+	output_text = ""
+	for i in range(len(input_text)):
+		if ind >= limit:
+			print "this key has expired, you should generate a new one"
+			return
+		output_text = output_text + chr(ord(input_text[i])^ord(fkey.read(1)))
+		ind = ind+1
+	fkey.close()
+	findex = file(path.expanduser("~") + "/.epygma/" + key +"/index", "w")
+	print >> findex, str(ind)
+	print >> findex, str(limit)
+	findex.close()
+	print
+	print
+	print output_text
+	return output_text
+	
+
+#writing the cli
+try: argv[1]
+except:
+	print "specify an action to perform, run 'epygma -h' for details."
+	exit()
+	
+if argv[1] == "new":
+	del argv[1]
+	def parse_command_line():
+		ap = argparse.ArgumentParser(usage="epygma new [-n NAME] [-b BYTES]", add_help = False)
+		ap.add_argument('-n', '--name', required = True, help = "Key name")
+		ap.add_argument('-b', '--bytes', type = int, default = 10000000, help = "Key bytes number. Default is 1000000")
+		return vars(ap.parse_args())
+	opt = parse_command_line()
+	genkey(opt['name'], opt['bytes'])
+	
+elif argv[1] == "xor":
+	del argv[1]
+	def parse_command_line():
+		ap = argparse.ArgumentParser(usage="epygma xor [-i INPUT] [-k KEY] [-o OUTPUT]", add_help = False)
+		ap.add_argument('-i', '--input', required = True, help = 'input file')
+		ap.add_argument('-k', '--key', required = True, help = "key the file will be encrypted/unencrypted with")
+		ap.add_argument('-o', '--output', default = 'output', help = 'output file')
+		return vars(ap.parse_args())
+	opt = parse_command_line()
+	xor_strings(opt['input'], opt['key'], opt['output'])
+	
+elif argv[1] == "import":
+	del argv[1]
+	def parse_command_line():
+		ap = argparse.ArgumentParser(usage="epygma import [-k KEY] [-n NAME]", add_help = False)
+		ap.add_argument('-n', '--name', required = True, help = "Key name")
+		ap.add_argument('-k', '--key', required = True, help = "key file")
+		return vars(ap.parse_args())
+	opt = parse_command_line()
+	Import(opt['key'], opt['name'])
+	
+elif argv[1] == "encrypt_text":
+	del argv[1]
+	def parse_command_line():
+		ap = argparse.ArgumentParser(usage="epygma import [-k KEY] [-n NAME]", add_help = False)
+		ap.add_argument('-k', '--key', required = True, help = "key file")
+		return vars(ap.parse_args())
+	opt = parse_command_line()
+	encrypt_input_text(opt['key'])
+	
+elif argv[1] == "unencrypt_text":
+	del argv[1]
+	def parse_command_line():
+		ap = argparse.ArgumentParser(usage="epygma import [-k KEY] [-n NAME]", add_help = False)
+		ap.add_argument('-k', '--key', required = True, help = "key file")
+		return vars(ap.parse_args())
+	opt = parse_command_line()
+	unencrypt_input_text(opt['key'])
+	
+elif argv[1] == "-h" or argv[1] == "--help":
+	print """description:
+epygma is a simple script which allows you to encrypt text and files with xor and one-time pad. One-time pad was mathematically proven to be uncrackable in 1949. The key must be as long as the number of bytes you want to encrypt, for example a 10Mb key allows you to encrypt one 10Mb file or ten 1Mb files, after that you'll need to generate a new key. You need to safely exchange the keys with your friends to be able to communicate.
+
+usage:
+epygma new [-n NAME] [-b BYTES]             create a new key, default lenght is 10000000bytes
+epygma xor [-i INPUT] [-k KEY] [-o OUTPUT]  encrypt/decrypt a file
+epygma encrypt_text [-k KEY]                encrypt text from stdin and encode it in Base64
+epygma unencrypt_text [-k KEY]              decode a Base64 text from stdin and unencrypt it
+epygma import [-k KEY] [-n NAME]            import a key
+"""
+
+else: print("Invalid action. Run 'epygma -h' for details.")
