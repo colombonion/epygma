@@ -17,7 +17,7 @@ create a new key, default lenght is 10000000bytes
 
     epygma xor [-i INPUT] [-k KEY] [-o OUTPUT]  
     
-    encrypt/decrypt a file
+encrypt/decrypt a file
 
     epygma encrypt_text [-k KEY]                
     
